@@ -6,7 +6,8 @@ echo "🕐 Waiting for Teable to be ready..."
 
 # Function to check if Teable is responding
 check_teable() {
-    curl -f -s "${TEABLE_URL:-http://teable:3000}/api/ping" >/dev/null 2>&1
+    # Just check if Teable port is responding, don't need specific endpoint
+    curl -f -s "${TEABLE_URL:-http://teable:3000}/" >/dev/null 2>&1
 }
 
 # Wait for Teable to be ready (max 5 minutes)

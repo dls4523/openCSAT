@@ -5,7 +5,7 @@ RUN apk add --no-cache curl bash
 WORKDIR /app
 
 COPY package*.json ./
-RUN npm ci --only=production
+RUN npm install --only=production
 
 COPY . .
 RUN chmod +x wait-and-setup.sh
