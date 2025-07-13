@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{title}}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
+        .question { margin: 30px 0; }
+        label { display: block; margin-bottom: 10px; font-weight: bold; }
+        .rating-group { display: flex; gap: 10px; margin: 10px 0; }
+        .rating-btn { 
+            width: 50px; height: 50px; border: 2px solid #ddd; background: white; 
+            border-radius: 50%; cursor: pointer; font-size: 18px; font-weight: bold;
+        }
+        .rating-btn:hover { border-color: #007cba; }
+        .rating-btn.selected { background: #007cba; color: white; border-color: #007cba; }
+        textarea { width: 100%; height: 100px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; }
+        .submit-btn { 
+            background: #007cba; color: white; padding: 15px 30px; 
+            border: none; border-radius: 4px; cursor: pointer; font-size: 16px; 
+        }
+        .submit-btn:hover { background: #005a8b; }
+        .submit-btn:disabled { background: #ccc; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+    <h1>{{title}}</h1>
+    <p>{{description}}</p>
+    
+    <form id="surveyForm">
+        {{questions}}
+        
+        <div style="margin-top: 40px;">
+            <button type="submit" class="submit-btn">Submit Survey</button>
+        </div>
+    </form>
+
+    <script>
+        // Handle rating buttons
+        document.querySelectorAll('.rating-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const question = this.dataset.question;
+                const value = this.dataset.value;
+                
+                // Clear other selections for this question
+                document.querySelectorAll(`[data-question="${question}"]`).forEach(b => {
+                    b.classList.remove('selected');
+                });
+                
+                // Select this button
+                this.classList.add('selected');
+                
+                // Set hidden input value
+                document.querySelector(`input[name="${question}"]`).value = value;
+            });
+        });
+
+        // Handle form submission
+        document.getElementById('surveyForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const submitBtn = this.querySelector('.submit-btn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Submitting...';
+            
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData);
+            
+            try {
+                const response = await fetch(window.location.pathname + '/submit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                if (response.ok) {
+                    document.body.innerHTML = `
+                        <div style="text-align: center; padding: 50px;">
+                            <h1>Thank You!</h1>
+                            <p>Your feedback has been submitted successfully.</p>
+                        </div>
+                    `;
+                } else {
+                    alert('Failed to submit survey. Please try again.');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Submit Survey';
+                }
+            } catch (error) {
+                alert('Error submitting survey. Please try again.');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Submit Survey';
+            }
+        });
+    </script>
+</body>
+</html>

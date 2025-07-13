@@ -1,0 +1,17 @@
+{
+  "name": "opencsat-app",
+  "version": "1.0.0",
+  "description": "CSAT survey app",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.0",
+    "axios": "^1.6.0",
+    "crypto": "^1.0.1"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

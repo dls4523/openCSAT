@@ -1,0 +1,69 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: opencsat_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - opencsat
+
+  teable:
+    image: ghcr.io/teableio/teable:latest
+    container_name: opencsat_teable
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8095:3000"
+    env_file:
+      - .env
+    networks:
+      - opencsat
+
+  setup:
+    build:
+      context: ./scripts
+    depends_on:
+      teable:
+        condition: service_started
+    env_file:
+      - .env
+    environment:
+      - TEABLE_URL=http://teable:3000
+    networks:
+      - opencsat
+    restart: "no"
+
+  app:
+    build:
+      context: ./app
+    container_name: opencsat_app
+    restart: unless-stopped
+    depends_on:
+      setup:
+        condition: service_completed_successfully
+    ports:
+      - "8094:3000"
+    env_file:
+      - .env
+    environment:
+      - TEABLE_URL=http://teable:3000
+    networks:
+      - opencsat
+
+networks:
+  opencsat:
+    driver: bridge
