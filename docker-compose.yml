@@ -16,6 +16,15 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
     networks:
       - opencsat
 
@@ -30,6 +39,20 @@ services:
       - "${TEABLE_PORT}:3000"
     env_file:
       - .env
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
     networks:
       - opencsat
 
@@ -39,13 +62,29 @@ services:
     container_name: opencsat_app
     restart: unless-stopped
     depends_on:
-      - teable
+      teable:
+        condition: service_healthy
     ports:
       - "${APP_PORT}:3000"
     env_file:
       - .env
     environment:
       - TEABLE_URL=http://teable:3000
+      - NODE_ENV=production
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
     networks:
       - opencsat
 
