@@ -125,7 +125,9 @@ class Teable {
   async updateRecord(tableName, recordId, data) {
     const tableId = await this.getTableId(tableName);
     return this.request(`/table/${tableId}/record/${recordId}`, 'PATCH', {
-      fields: data
+      record: {
+        fields: data
+      }
     });
   }
 }
@@ -190,6 +192,7 @@ app.get('/survey/create-and-redirect', async (req, res) => {
 
     // Create survey response record
     await teable.createRecord('survey_responses', {
+      Name: `Survey Response - ${ticket_id}`,
       token,
       status: 'pending',
       ticket_external_id: ticket_id,
@@ -265,11 +268,14 @@ app.get('/survey/:token', async (req, res) => {
       return res.status(500).send('Survey system not configured properly');
     }
 
-    // Get survey response
     const surveyResponses = await teable.getRecords('survey_responses', {
       filterByFormula: `{token} = "${token}"`,
       maxRecords: 1
     });
+
+    console.log(`Survey responses found for token: ${token}`);
+    console.log(`Survey responses: ${JSON.stringify(surveyResponses, null, 2)}`);
+
 
     if (!surveyResponses || surveyResponses.length === 0) {
       console.log(`No survey found for token: ${token}`);
@@ -433,6 +439,7 @@ app.post('/survey/:token/submit', async (req, res) => {
 
     // Update survey response
     await teable.updateRecord('survey_responses', surveyResponse.id, {
+      Name: `Survey Response - ${surveyResponse.fields.ticket_external_id || 'Unknown'}`, // Add this line
       status: 'completed',
       responses: JSON.stringify(responses),
       overall_rating: overallRating,

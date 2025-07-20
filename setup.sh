@@ -30,6 +30,20 @@ print_info() {
     echo -e "${BLUE}📋 $1${NC}"
 }
 
+# Function to detect docker compose command
+detect_docker_compose() {
+    if command -v docker-compose >/dev/null 2>&1; then
+        DOCKER_COMPOSE="docker-compose"
+    elif docker compose version >/dev/null 2>&1; then
+        DOCKER_COMPOSE="docker compose"
+    else
+        print_error "Neither 'docker-compose' nor 'docker compose' found"
+        print_info "Please install Docker Compose: https://docs.docker.com/compose/install/"
+        exit 1
+    fi
+    print_info "Using: $DOCKER_COMPOSE"
+}
+
 # Function to load configuration from .env file
 load_config() {
     if [ -f .env ]; then
@@ -92,8 +106,8 @@ check_env_file() {
 start_core_services() {
     print_status "Starting core services (Postgres + Teable)..."
     
-    # Start just postgres and teable, not the setup container
-    docker-compose up -d postgres teable
+    # Start just postgres and teable
+    $DOCKER_COMPOSE up -d postgres teable
     
     print_info "Waiting for Teable to be ready at ${TEABLE_URL}..."
     
@@ -113,13 +127,13 @@ start_core_services() {
     done
     
     print_error "Teable failed to start after $((retries * 2)) seconds"
-    print_info "Check logs with: docker-compose logs teable"
+    print_info "Check logs with: $DOCKER_COMPOSE logs teable"
     exit 1
 }
 
 # Get API token from user
 get_api_token() {
-    local current_token=$(grep "TEABLE_API_TOKEN=" .env 2>/dev/null | cut -d'=' -f2 || echo "")
+    local current_token=$(grep "TEABLE_API_TOKEN=" .env 2>/dev/null | cut -d'=' -f2- || echo "")
     
     if [ -n "$current_token" ] && [ "$current_token" != "" ]; then
         print_info "Found existing API token in .env"
@@ -166,9 +180,9 @@ get_api_token() {
         exit 1
     fi
     
-    # Update .env file
+    # Update .env file - use | as delimiter to avoid issues with / and = in token
     if grep -q "TEABLE_API_TOKEN=" .env; then
-        sed -i "s/TEABLE_API_TOKEN=.*/TEABLE_API_TOKEN=$TEABLE_API_TOKEN/" .env
+        sed -i "s|TEABLE_API_TOKEN=.*|TEABLE_API_TOKEN=$TEABLE_API_TOKEN|" .env
     else
         echo "TEABLE_API_TOKEN=$TEABLE_API_TOKEN" >> .env
     fi
@@ -176,21 +190,124 @@ get_api_token() {
     print_success "API token saved to .env"
 }
 
+# Extract Base ID from Teable API as fallback
+get_base_id_from_api() {
+    print_info "🔄 Getting Base ID from Teable API..."
+    
+    if [ -z "$TEABLE_API_TOKEN" ]; then
+        print_error "No API token available"
+        return 1
+    fi
+    
+    # Get OpenCSAT space
+    local space_response
+    space_response=$(curl -s -H "Authorization: Bearer $TEABLE_API_TOKEN" "${TEABLE_URL}/api/space" 2>/dev/null)
+    
+    if [ $? -ne 0 ] || [ -z "$space_response" ]; then
+        print_error "Failed to connect to Teable API"
+        return 1
+    fi
+    
+    # Extract OpenCSAT space ID
+    local space_id
+    space_id=$(echo "$space_response" | grep -o '"id":"[^"]*"[^}]*"name":"OpenCSAT"' | grep -o '"id":"[^"]*"' | cut -d'"' -f4)
+    
+    if [ -z "$space_id" ]; then
+        print_error "Could not find OpenCSAT space"
+        return 1
+    fi
+    
+    print_info "Found OpenCSAT space: $space_id"
+    
+    # Get bases in the OpenCSAT space
+    local base_response
+    base_response=$(curl -s -H "Authorization: Bearer $TEABLE_API_TOKEN" "${TEABLE_URL}/api/space/$space_id/base" 2>/dev/null)
+    
+    if [ $? -ne 0 ] || [ -z "$base_response" ]; then
+        print_error "Failed to get bases from space"
+        return 1
+    fi
+    
+    # Extract OpenCSAT base ID
+    local base_id
+    base_id=$(echo "$base_response" | grep -o '"id":"[^"]*"[^}]*"name":"OpenCSAT"' | grep -o '"id":"[^"]*"' | cut -d'"' -f4)
+    
+    if [ -z "$base_id" ]; then
+        print_error "Could not find OpenCSAT base in space"
+        return 1
+    fi
+    
+    # Validate and save the base ID
+    if [[ "$base_id" =~ ^bse[A-Za-z0-9]{16}$ ]]; then
+        print_success "✅ Retrieved Base ID from API: $base_id"
+        
+        # Write to .env
+        if grep -q "TEABLE_BASE_ID=" .env; then
+            sed -i "s|TEABLE_BASE_ID=.*|TEABLE_BASE_ID=$base_id|" .env
+        else
+            echo "TEABLE_BASE_ID=$base_id" >> .env
+        fi
+        
+        if grep -q "SETUP_COMPLETED=" .env; then
+            sed -i "s|SETUP_COMPLETED=.*|SETUP_COMPLETED=true|" .env
+        else
+            echo "SETUP_COMPLETED=true" >> .env
+        fi
+        
+        print_success "✅ Base ID saved to .env"
+        return 0
+    else
+        print_error "Invalid Base ID format from API: $base_id"
+        return 1
+    fi
+}
+
 # Run the setup process
 run_setup() {
     print_status "Running OpenCSAT setup process..."
     
-    # Export the token for the node script
+    # Export the token for the setup process
     export TEABLE_API_TOKEN
     export TEABLE_URL
     
-    # Run the setup script directly with node
-    if [ -f "scripts/setup-teable.js" ]; then
-        cd scripts
-        node setup-teable.js
-        cd ..
+    # Check if node is available locally
+    if command -v node >/dev/null 2>&1; then
+        print_info "Using local Node.js"
+        if [ -f "scripts/setup-teable.js" ]; then
+            cd scripts
+            node setup-teable.js
+            cd ..
+        else
+            print_error "Setup script not found at scripts/setup-teable.js"
+            exit 1
+        fi
     else
-        print_error "Setup script not found at scripts/setup-teable.js"
+        print_info "Node.js not found locally, running setup in Docker container..."
+        
+        # Run setup in Docker container
+        docker run --rm \
+            --network opencsat_opencsat \
+            -v "$(pwd)/scripts:/app" \
+            -w /app \
+            -e TEABLE_API_TOKEN="$TEABLE_API_TOKEN" \
+            -e TEABLE_URL="http://teable:3000" \
+            node:18-alpine \
+            node setup-teable.js
+        
+        print_info "Setup script completed"
+    fi
+    
+    # Get Base ID from API since the script output is unreliable
+    if get_base_id_from_api; then
+        print_success "✅ Setup completed successfully"
+    else
+        print_error "❌ Could not retrieve Base ID"
+        print_info "Manual steps required:"
+        echo "  1. Open ${TEABLE_URL} in your browser"
+        echo "  2. Click on the OpenCSAT base"
+        echo "  3. Copy the Base ID from the URL (bseXXXXXXXXXXXXXXX)"
+        echo "  4. Add it to .env: echo 'TEABLE_BASE_ID=your_base_id' >> .env"
+        echo "  5. Run: echo 'SETUP_COMPLETED=true' >> .env"
         exit 1
     fi
 }
@@ -200,7 +317,7 @@ start_application() {
     print_status "Starting OpenCSAT application..."
     
     # Start the app container
-    docker-compose up -d app
+    $DOCKER_COMPOSE up -d app
     
     # Wait a moment for app to start
     sleep 3
@@ -210,7 +327,7 @@ start_application() {
         print_success "OpenCSAT application is running!"
     else
         print_warning "Application may still be starting..."
-        print_info "Check status with: docker-compose logs app"
+        print_info "Check status with: $DOCKER_COMPOSE logs app"
     fi
 }
 
@@ -233,7 +350,7 @@ test_system() {
         echo "  • Add PSA email templates from email-templates.txt"
     else
         print_warning "Survey test failed. Check application logs:"
-        echo "  docker-compose logs app"
+        echo "  $DOCKER_COMPOSE logs app"
     fi
 }
 
@@ -270,6 +387,7 @@ main_setup() {
     
     check_docker
     check_env_file
+    detect_docker_compose
     load_config
     start_core_services
     get_api_token
@@ -287,35 +405,41 @@ case "${1:-setup}" in
         main_setup
         ;;
     "start")
+        detect_docker_compose
         print_status "Starting all services..."
-        docker-compose up -d postgres teable app
+        $DOCKER_COMPOSE up -d postgres teable app
         print_success "Services started"
         ;;
     "stop")
+        detect_docker_compose
         print_status "Stopping all services..."
-        docker-compose down
+        $DOCKER_COMPOSE down
         print_success "Services stopped"
         ;;
     "restart")
+        detect_docker_compose
         print_status "Restarting all services..."
-        docker-compose restart
+        $DOCKER_COMPOSE restart
         print_success "Services restarted"
         ;;
     "logs")
+        detect_docker_compose
         if [ -n "$2" ]; then
-            docker-compose logs -f "$2"
+            $DOCKER_COMPOSE logs -f "$2"
         else
-            docker-compose logs -f
+            $DOCKER_COMPOSE logs -f
         fi
         ;;
     "status")
-        docker-compose ps
+        detect_docker_compose
+        $DOCKER_COMPOSE ps
         ;;
     "clean")
+        detect_docker_compose
         print_warning "This will remove all data!"
         read -p "Are you sure? (y/N): " confirm
         if [ "$confirm" = "y" ] || [ "$confirm" = "Y" ]; then
-            docker-compose down -v
+            $DOCKER_COMPOSE down -v
             print_success "All data removed"
         else
             print_info "Clean cancelled"

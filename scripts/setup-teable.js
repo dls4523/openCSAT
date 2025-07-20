@@ -722,6 +722,15 @@ class TeableSetup {
     async writeConfigToEnv() {
         console.log('💾 Writing configuration to .env file...');
         
+        // Ensure we have the Base ID
+        if (!this.config.baseId) {
+            console.log('⚠️  No Base ID available to write to .env');
+            console.log('📝 Please manually add these lines to your .env file:');
+            console.log(`TEABLE_BASE_ID=<your_base_id>`);
+            console.log(`SETUP_COMPLETED=true`);
+            return;
+        }
+        
         try {
             const envPath = '/app/.env';
             let envContent = '';
@@ -805,8 +814,17 @@ class TeableSetup {
         await this.writeConfigToEnv();
 
         console.log('\n✨ OpenCSAT Teable setup completed successfully!');
-        console.log(`📊 Base ID: ${this.config.baseId}`);
-        console.log(`🌐 Space ID: ${this.config.spaceId}`);
+        
+        if (this.config.baseId) {
+            console.log(`📊 Base ID: ${this.config.baseId}`);
+        } else {
+            console.log('⚠️  Base ID not properly captured - manual configuration needed');
+        }
+        
+        if (this.config.spaceId) {
+            console.log(`🌐 Space ID: ${this.config.spaceId}`);
+        }
+        
         console.log('🎉 Ready to collect customer feedback!');
         
         console.log('\n🔧 Configuration saved to .env file');
