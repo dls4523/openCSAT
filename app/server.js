@@ -7,7 +7,19 @@ const fs = require('fs');
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static('public'));
+
+// Environment validation
+function validateEnvironment() {
+  const required = ['TEABLE_API_TOKEN', 'TEABLE_BASE_ID'];
+  const missing = required.filter(env => !process.env[env]);
+  
+  if (missing.length > 0) {
+    console.error(`❌ Missing required environment variables: ${missing.join(', ')}`);
+    console.error('📝 Please run the setup process first or check your .env file');
+    return false;
+  }
+  return true;
+}
 
 // Simple Teable client using Node's built-in http
 class Teable {
@@ -150,7 +162,7 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Add to server.js
+// Survey creation and redirect endpoint - called by PSA systems
 app.get('/survey/create-and-redirect', async (req, res) => {
   try {
     const { 
@@ -169,6 +181,8 @@ app.get('/survey/create-and-redirect', async (req, res) => {
     if (!ticket_id || !customer_email || !customer_name) {
       return res.status(400).send('Missing required parameters: ticket_id, customer_email, customer_name');
     }
+
+    console.log(`Creating survey for ticket: ${ticket_id}, customer: ${customer_email}`);
 
     const token = generateToken();
     const expiryDate = new Date();
@@ -191,6 +205,7 @@ app.get('/survey/create-and-redirect', async (req, res) => {
       created_at: new Date().toISOString()
     });
 
+    console.log(`Survey created with token: ${token}`);
     res.redirect(`/survey/${token}`);
   } catch (error) {
     console.error('Survey creation error:', error);
@@ -198,24 +213,30 @@ app.get('/survey/create-and-redirect', async (req, res) => {
   }
 });
 
-// Survey page
+// Survey page display
 app.get('/survey/:token', async (req, res) => {
   try {
     const { token } = req.params;
     
     console.log(`Loading survey for token: ${token}`);
     
-    // Check if we have required config
-    if (!process.env.TEABLE_API_TOKEN || !process.env.TEABLE_BASE_ID) {
-      console.error('Missing Teable configuration');
-      return res.status(500).send('Survey system not configured properly');
-    }
-
-    // For now, let's create a simple test survey without database lookup
+    // Handle test survey
     if (token === 'test') {
       const testSurvey = loadTemplate('survey', {
         title: 'Test Survey',
         description: 'This is a test survey to verify the system is working.',
+        ticket_context: `
+          <div class="ticket-context">
+            <h3>📋 Test Ticket Details</h3>
+            <div class="ticket-details">
+              <p><strong>Ticket #:</strong> TEST-001</p>
+              <p><strong>Subject:</strong> Test Support Request</p>
+              <p><strong>Technician:</strong> Test Technician</p>
+              <p><strong>Company:</strong> Test Company</p>
+              <p><strong>Completed:</strong> ${new Date().toLocaleDateString()}</p>
+            </div>
+          </div>
+        `,
         questions: `
           <div class="question">
             <label>How satisfied are you with our service? *</label>
@@ -238,7 +259,13 @@ app.get('/survey/:token', async (req, res) => {
       return res.send(testSurvey);
     }
     
-    // Try to get real survey from database
+    // Check if we have required config
+    if (!process.env.TEABLE_API_TOKEN || !process.env.TEABLE_BASE_ID) {
+      console.error('Missing Teable configuration');
+      return res.status(500).send('Survey system not configured properly');
+    }
+
+    // Get survey response
     const surveyResponses = await teable.getRecords('survey_responses', {
       filterByFormula: `{token} = "${token}"`,
       maxRecords: 1
@@ -251,11 +278,36 @@ app.get('/survey/:token', async (req, res) => {
 
     const surveyResponse = surveyResponses[0];
 
+    // Check if already completed
     if (surveyResponse.fields.status === 'completed') {
       return res.send(loadTemplate('success', {
         message: 'Thank you! You have already completed this survey.'
       }));
     }
+
+    // Check if expired
+    if (surveyResponse.fields.expires_at) {
+      const expiryDate = new Date(surveyResponse.fields.expires_at);
+      if (expiryDate < new Date()) {
+        return res.status(410).send('This survey has expired');
+      }
+    }
+
+    // Build ticket context HTML
+    const ticketContext = `
+      <div class="ticket-context">
+        <h3>📋 Ticket Details</h3>
+        <div class="ticket-details">
+          <p><strong>Ticket #:</strong> ${surveyResponse.fields.ticket_external_id || 'N/A'}</p>
+          <p><strong>Subject:</strong> ${surveyResponse.fields.ticket_subject || 'N/A'}</p>
+          <p><strong>Technician:</strong> ${surveyResponse.fields.technician_name || 'N/A'}</p>
+          <p><strong>Company:</strong> ${surveyResponse.fields.company_name || 'N/A'}</p>
+          <p><strong>Completed:</strong> ${surveyResponse.fields.completion_date ? new Date(surveyResponse.fields.completion_date).toLocaleDateString() : 'N/A'}</p>
+          ${surveyResponse.fields.priority ? `<p><strong>Priority:</strong> ${surveyResponse.fields.priority}</p>` : ''}
+          ${surveyResponse.fields.category ? `<p><strong>Category:</strong> ${surveyResponse.fields.category}</p>` : ''}
+        </div>
+      </div>
+    `;
 
     // Get the default survey
     const surveys = await teable.getRecords('surveys', {
@@ -322,6 +374,7 @@ app.get('/survey/:token', async (req, res) => {
     res.send(loadTemplate('survey', {
       title: survey.fields.title || 'Customer Survey',
       description: survey.fields.description || '',
+      ticket_context: ticketContext,
       questions: questionsHtml,
       token
     }));
@@ -359,6 +412,14 @@ app.post('/survey/:token/submit', async (req, res) => {
 
     if (surveyResponse.fields.status === 'completed') {
       return res.status(400).json({ error: 'Survey already completed' });
+    }
+
+    // Check if expired
+    if (surveyResponse.fields.expires_at) {
+      const expiryDate = new Date(surveyResponse.fields.expires_at);
+      if (expiryDate < new Date()) {
+        return res.status(410).json({ error: 'Survey has expired' });
+      }
     }
 
     // Calculate overall rating (average of rating questions)
@@ -402,9 +463,27 @@ app.post('/webhook/syncro', async (req, res) => {
 
 // Start server
 const PORT = process.env.PORT || 3000;
+
+// Only start server if environment is properly configured
+if (process.env.NODE_ENV === 'production' && !validateEnvironment()) {
+  console.error('🚫 Server startup aborted due to missing configuration');
+  process.exit(1);
+}
+
 app.listen(PORT, () => {
-  console.log(`OpenCSAT server running on port ${PORT}`);
-  console.log(`Teable URL: ${process.env.TEABLE_URL}`);
-  console.log(`Teable Base ID: ${process.env.TEABLE_BASE_ID}`);
-  console.log(`API Token configured: ${!!process.env.TEABLE_API_TOKEN}`);
+  console.log(`🚀 OpenCSAT server running on port ${PORT}`);
+  console.log(`🔗 Teable URL: ${process.env.TEABLE_URL}`);
+  console.log(`📊 Teable Base ID: ${process.env.TEABLE_BASE_ID}`);
+  console.log(`🔑 API Token configured: ${!!process.env.TEABLE_API_TOKEN}`);
+  
+  if (!process.env.TEABLE_API_TOKEN || !process.env.TEABLE_BASE_ID) {
+    console.log('\n⚠️  Missing configuration detected:');
+    console.log('   1. Ensure Teable setup has completed successfully');
+    console.log('   2. Check that TEABLE_BASE_ID is set in your .env file');
+    console.log('   3. Verify TEABLE_API_TOKEN is configured');
+    console.log('   4. Test with: curl http://localhost:' + PORT + '/health');
+  } else {
+    console.log('\n✅ OpenCSAT ready to accept survey requests!');
+    console.log(`   Test survey: http://localhost:${PORT}/survey/test`);
+  }
 });

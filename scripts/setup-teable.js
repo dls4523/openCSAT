@@ -2,6 +2,8 @@
 
 const https = require('https');
 const http = require('http');
+const fs = require('fs');
+const path = require('path');
 
 class TeableSetup {
     constructor() {
@@ -281,7 +283,7 @@ class TeableSetup {
 
                 await this.createFieldIfNotExists(tableIds.tickets, 'customer_email', {
                     name: 'customer_email',
-                    type: 'singleLineText'  // Changed from 'email' to 'singleLineText'
+                    type: 'singleLineText'
                 });
 
                 await this.createFieldIfNotExists(tableIds.tickets, 'customer_name', {
@@ -345,6 +347,46 @@ class TeableSetup {
                     type: 'singleLineText'
                 });
 
+                await this.createFieldIfNotExists(tableIds.survey_responses, 'customer_email', {
+                    name: 'customer_email',
+                    type: 'singleLineText'
+                });
+
+                await this.createFieldIfNotExists(tableIds.survey_responses, 'customer_name', {
+                    name: 'customer_name',
+                    type: 'singleLineText'
+                });
+
+                await this.createFieldIfNotExists(tableIds.survey_responses, 'ticket_subject', {
+                    name: 'ticket_subject',
+                    type: 'singleLineText'
+                });
+
+                await this.createFieldIfNotExists(tableIds.survey_responses, 'technician_name', {
+                    name: 'technician_name',
+                    type: 'singleLineText'
+                });
+
+                await this.createFieldIfNotExists(tableIds.survey_responses, 'company_name', {
+                    name: 'company_name',
+                    type: 'singleLineText'
+                });
+
+                await this.createFieldIfNotExists(tableIds.survey_responses, 'completion_date', {
+                    name: 'completion_date',
+                    type: 'date'
+                });
+
+                await this.createFieldIfNotExists(tableIds.survey_responses, 'priority', {
+                    name: 'priority',
+                    type: 'singleLineText'
+                });
+
+                await this.createFieldIfNotExists(tableIds.survey_responses, 'category', {
+                    name: 'category',
+                    type: 'singleLineText'
+                });
+
                 await this.createFieldIfNotExists(tableIds.survey_responses, 'submitted_at', {
                     name: 'submitted_at',
                     type: 'date'
@@ -352,6 +394,11 @@ class TeableSetup {
 
                 await this.createFieldIfNotExists(tableIds.survey_responses, 'expires_at', {
                     name: 'expires_at',
+                    type: 'date'
+                });
+
+                await this.createFieldIfNotExists(tableIds.survey_responses, 'created_at', {
+                    name: 'created_at',
                     type: 'date'
                 });
             }
@@ -527,6 +574,49 @@ class TeableSetup {
         }
     }
 
+    async writeConfigToEnv() {
+        console.log('💾 Writing configuration to .env file...');
+        
+        try {
+            const envPath = '/app/.env';
+            let envContent = '';
+            
+            // Read existing .env file if it exists
+            if (fs.existsSync(envPath)) {
+                envContent = fs.readFileSync(envPath, 'utf8');
+            }
+            
+            // Add or update TEABLE_BASE_ID
+            if (!envContent.includes('TEABLE_BASE_ID=')) {
+                envContent += `\nTEABLE_BASE_ID=${this.config.baseId}\n`;
+            } else {
+                envContent = envContent.replace(
+                    /TEABLE_BASE_ID=.*/g, 
+                    `TEABLE_BASE_ID=${this.config.baseId}`
+                );
+            }
+            
+            // Add SETUP_COMPLETED flag
+            if (!envContent.includes('SETUP_COMPLETED=')) {
+                envContent += `SETUP_COMPLETED=true\n`;
+            } else {
+                envContent = envContent.replace(
+                    /SETUP_COMPLETED=.*/g, 
+                    'SETUP_COMPLETED=true'
+                );
+            }
+            
+            fs.writeFileSync(envPath, envContent);
+            console.log('✅ Configuration written to .env file');
+            
+        } catch (error) {
+            console.log(`⚠️  Could not write to .env file: ${error.message}`);
+            console.log('📝 Please manually add these lines to your .env file:');
+            console.log(`TEABLE_BASE_ID=${this.config.baseId}`);
+            console.log(`SETUP_COMPLETED=true`);
+        }
+    }
+
     async run() {
         console.log('🚀 Starting OpenCSAT Teable Setup...\n');
 
@@ -539,6 +629,7 @@ class TeableSetup {
 
         if (!process.env.TEABLE_API_TOKEN) {
             console.error('❌ TEABLE_API_TOKEN is required');
+            console.error('📝 Please obtain an API token from Teable and add it to your .env file');
             process.exit(1);
         }
 
@@ -560,15 +651,20 @@ class TeableSetup {
 
         await this.setupBasicFields();
         await this.addDefaultData();
+        await this.writeConfigToEnv();
 
         console.log('\n✨ OpenCSAT Teable setup completed successfully!');
         console.log(`📊 Base ID: ${this.config.baseId}`);
+        console.log(`🌐 Space ID: ${this.config.spaceId}`);
         console.log('🎉 Ready to collect customer feedback!');
         
-        // Save base ID for the app to use
-        console.log(`\n🔧 Add this to your .env file:`);
-        console.log(`TEABLE_BASE_ID=${this.config.baseId}`);
-        console.log(`SETUP_COMPLETED=true`);
+        console.log('\n🔧 Configuration saved to .env file');
+        console.log('♻️  Restart your application to load the new configuration');
+        console.log('\n📋 Next steps:');
+        console.log('   1. Restart your OpenCSAT application: docker-compose restart app');
+        console.log('   2. Test the survey system: http://localhost:8094/survey/test');
+        console.log('   3. Add email templates to your PSA system');
+        console.log('   4. View responses in Teable dashboard: http://localhost:8095');
     }
 }
 
@@ -577,6 +673,11 @@ if (require.main === module) {
     const setup = new TeableSetup();
     setup.run().catch(error => {
         console.error('\n💥 Setup failed:', error.message);
+        console.error('\n🔧 Troubleshooting tips:');
+        console.error('   1. Ensure Teable is running and accessible');
+        console.error('   2. Verify your TEABLE_API_TOKEN is correct');
+        console.error('   3. Check network connectivity between containers');
+        console.error('   4. Review Teable logs: docker logs opencsat_teable');
         process.exit(1);
     });
 }

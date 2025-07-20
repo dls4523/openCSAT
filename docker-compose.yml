@@ -41,6 +41,8 @@ services:
         condition: service_started
     env_file:
       - .env
+    volumes:
+      - ./.env:/app/.env
     environment:
       - TEABLE_URL=http://teable:3000
     networks:
