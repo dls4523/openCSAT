@@ -29,32 +29,14 @@ docker-compose up -d
 - Add `TEABLE_API_TOKEN=your_token` to `.env`
 - Run `docker-compose up -d` again
 
+
 ### 3. Add Email Template to Your PSA
-Choose your PSA system and follow the template guide:
+1. Choose your PSA system template from `/email-templates.txt`
+2. **Replace `{{OPENCSAT_BASE_URL}}`** with your actual domain (e.g., `https://csat.yourcompany.com`)
+3. Add the template to your PSA's "ticket closed" email notification
+4. Test with a sample ticket closure
 
-#### SyncroMSP
-Add this to your "Ticket Resolved" email template:
-```html
-<a href="https://your-opencsat-domain.com/api/survey/create-and-redirect?ticket_id={{id}}&customer_email={{customer_business_then_primary_email}}&customer_name={{customer_business_then_primary_name}}&ticket_subject={{subject}}&technician_name={{assigned_user}}&company_name={{business_name}}&completion_date={{updated_at}}">
-  📊 Rate Your Experience
-</a>
-```
 
-#### ConnectWise Manage
-```html
-<a href="https://your-opencsat-domain.com/api/survey/create-and-redirect?ticket_id=$ticket_number&customer_email=$contact_email&customer_name=$contact_name&ticket_subject=$summary&technician_name=$assigned_member&company_name=$company_name&completion_date=$date_closed">
-  📋 Complete Survey
-</a>
-```
-
-#### Autotask PSA
-```html
-<a href="https://your-opencsat-domain.com/api/survey/create-and-redirect?ticket_id=[TICKETNUMBER]&customer_email=[CONTACTEMAIL]&customer_name=[CONTACTFIRSTNAME] [CONTACTLASTNAME]&ticket_subject=[TICKETTITLE]&technician_name=[ASSIGNEDRESOURCENAME]&company_name=[ACCOUNTNAME]&completion_date=[COMPLETEDDATE]">
-  ⭐ Rate Service
-</a>
-```
-
-*See `/docs/email-templates/` for complete templates with styling*
 
 ### 4. Test It!
 - Visit `http://localhost:8080/survey/test` to see the survey interface

@@ -150,6 +150,54 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Add to server.js
+app.get('/survey/create-and-redirect', async (req, res) => {
+  try {
+    const { 
+      ticket_id, 
+      customer_email, 
+      customer_name, 
+      ticket_subject, 
+      technician_name, 
+      company_name, 
+      completion_date,
+      priority,
+      category 
+    } = req.query;
+
+    // Validate required parameters
+    if (!ticket_id || !customer_email || !customer_name) {
+      return res.status(400).send('Missing required parameters: ticket_id, customer_email, customer_name');
+    }
+
+    const token = generateToken();
+    const expiryDate = new Date();
+    expiryDate.setDate(expiryDate.getDate() + (parseInt(process.env.SURVEY_EXPIRY_DAYS) || 30));
+
+    // Create survey response record
+    await teable.createRecord('survey_responses', {
+      token,
+      status: 'pending',
+      ticket_external_id: ticket_id,
+      customer_email,
+      customer_name,
+      ticket_subject: ticket_subject || '',
+      technician_name: technician_name || '',
+      company_name: company_name || '',
+      completion_date: completion_date || new Date().toISOString(),
+      priority: priority || '',
+      category: category || '',
+      expires_at: expiryDate.toISOString(),
+      created_at: new Date().toISOString()
+    });
+
+    res.redirect(`/survey/${token}`);
+  } catch (error) {
+    console.error('Survey creation error:', error);
+    res.status(500).send('Error creating survey. Please contact support.');
+  }
+});
+
 // Survey page
 app.get('/survey/:token', async (req, res) => {
   try {
