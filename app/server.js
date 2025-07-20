@@ -372,7 +372,7 @@ app.get('/survey/:token', async (req, res) => {
     }).join('');
 
     res.send(loadTemplate('survey', {
-      title: survey.fields.title || 'Customer Survey',
+      title: survey.fields.Name || 'Customer Survey',
       description: survey.fields.description || '',
       ticket_context: ticketContext,
       questions: questionsHtml,

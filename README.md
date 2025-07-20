@@ -14,33 +14,71 @@ Simple, email template-driven CSAT surveys that work with **any PSA system** - S
 
 ## ⚡ Quick Start
 
+### Prerequisites
+- Docker 20.10+ and Docker Compose 2.0+
+- Node.js 16+ (for setup script)
+- Domain name pointing to your server (for production)
+
 ### 1. Deploy OpenCSAT
 ```bash
 git clone https://github.com/yourusername/opencsat.git
 cd opencsat
+
+# Copy and configure environment
 cp .env.example .env
-# Edit .env with your settings
-docker-compose up -d
+# Edit .env - set POSTGRES_PASSWORD at minimum
+
+# Run setup with live output
+chmod +x setup.sh
+./setup.sh
 ```
 
-### 2. Get Teable API Token
-- Open http://localhost:3000 (Teable interface)
-- Create account → User menu → Personal Access Tokens → Create
-- Add `TEABLE_API_TOKEN=your_token` to `.env`
-- Run `docker-compose up -d` again
+### 2. Setup Process
+The setup script will:
+1. **Start services** (Postgres + Teable)
+2. **Guide you** to create a Teable API token
+3. **Automatically create** database schema and default survey
+4. **Test the system** and provide next steps
 
+### 3. Access Your System
+- **Survey System**: http://localhost:8080
+- **Database Admin**: http://localhost:3000
+- **Test Survey**: http://localhost:8080/survey/test
 
-### 3. Add Email Template to Your PSA
-1. Choose your PSA system template from `/email-templates.txt`
-2. **Replace `{{OPENCSAT_BASE_URL}}`** with your actual domain (e.g., `https://csat.yourcompany.com`)
-3. Add the template to your PSA's "ticket closed" email notification
-4. Test with a sample ticket closure
+## 🔧 Configuration
 
+### Port Configuration
+Default ports in `.env`:
+```bash
+TEABLE_PORT=3000    # Database admin interface
+APP_PORT=8080       # Survey system
+POSTGRES_PORT=5432  # Database
+```
 
+### Production Configuration
+```bash
+# Required for production
+PUBLIC_ORIGIN=https://csat.yourcompany.com
+POSTGRES_PASSWORD=secure_production_password
+SECRET_KEY=your_32_character_secret_key_here
 
-### 4. Test It!
-- Visit `http://localhost:8080/survey/test` to see the survey interface
-- Close a test ticket in your PSA to verify the email integration
+# Optional: Custom ports
+APP_PORT=80
+TEABLE_PORT=3001
+```
+
+## 🛠️ Setup Commands
+
+```bash
+./setup.sh              # Complete setup process
+./setup.sh start         # Start services only
+./setup.sh stop          # Stop all services
+./setup.sh restart       # Restart services
+./setup.sh logs [app]    # View logs
+./setup.sh status        # Check service status
+./setup.sh clean         # Remove all data
+./setup.sh help          # Show all commands
+```
 
 ## 🌟 Key Features
 
@@ -95,32 +133,6 @@ PSA System → Email Template → OpenCSAT API → Survey Page → Teable Databa
 4. **Communication** (1-5 rating)
 5. **Additional Comments** (open text)
 
-## 🔧 Configuration
-
-### Environment Variables
-```bash
-# Database
-POSTGRES_DB=opencsat
-POSTGRES_USER=opencsat
-POSTGRES_PASSWORD=your_secure_password
-
-# Teable
-SECRET_KEY=your_32_character_secret_key_here
-PRISMA_DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-PUBLIC_ORIGIN=https://csat.yourcompany.com
-
-# Teable API (add after setup)
-TEABLE_API_TOKEN=your_api_token_here
-
-# App Config
-SURVEY_EXPIRY_DAYS=30
-```
-
-### Custom Branding
-- Edit `/app/views/survey.html` for custom styling
-- Modify survey questions in Teable interface
-- Add company logos and colors
-
 ## 🚀 Production Deployment
 
 ### 1. DNS and SSL
@@ -144,6 +156,7 @@ docker run -d \
 PUBLIC_ORIGIN=https://csat.yourcompany.com
 POSTGRES_PASSWORD=strong_production_password
 SECRET_KEY=your_production_secret_key
+APP_PORT=8080  # Or 80 if not using reverse proxy
 ```
 
 ### 3. Backup Strategy
@@ -171,16 +184,124 @@ GET /api/stats
 # Create survey programmatically  
 POST /api/survey/create
 
-# Webhook for real-time updates
-POST /webhook/survey-completed
+# Health check
+GET /health
 ```
 
-## 🔌 PSA Integrations
+## 🔌 PSA Integration
 
-### Available Integrations
-- **SyncroMSP** - Custom field updates, ticket comments
-- **ConnectWise** - Custom fields, activity entries
-- **Autotask** - UDFs, ticket notes
+### Email Template Setup
+1. **Choose your PSA** from the templates in `email-templates.txt`
+2. **Replace the domain** in the template:
+   ```
+   Change: https://your-opencsat-domain.com
+   To: https://csat.yourcompany.com
+   ```
+3. **Add to your PSA** as a "ticket closed" email template
+4. **Test** with a sample ticket
+
+### Available PSA Templates
+- **SyncroMSP** - Complete template with merge fields
+- **ConnectWise Manage** - Service ticket integration
+- **Autotask PSA** - Workflow rule template
+- **Kaseya VSA** - Service desk configuration
 - **Generic Webhook** - For custom integrations
 
-###
+## 🔧 Troubleshooting
+
+### Common Issues
+
+**Setup fails to connect to Teable:**
+```bash
+# Check if Teable is running
+./setup.sh status
+./setup.sh logs teable
+
+# Verify port availability
+netstat -tlnp | grep :3000
+```
+
+**Survey returns "not configured" error:**
+```bash
+# Check app configuration
+curl http://localhost:8080/health
+./setup.sh logs app
+
+# Verify environment variables
+grep TEABLE_ .env
+```
+
+**API token permission errors:**
+- Ensure token has all required permissions:
+  - Space: Create, Read, Update
+  - Base: Create, Read, Update, Read all bases
+  - Table: Create, Read, Update, Import data
+  - Field: Create, Read, Update, Delete
+  - Record: Create, Read, Update, Delete
+
+### Port Conflicts
+If default ports are in use:
+```bash
+# Check what's using the port
+sudo lsof -i :8080
+
+# Use different ports in .env
+APP_PORT=8081
+TEABLE_PORT=3001
+
+# Restart services
+./setup.sh restart
+```
+
+### Database Issues
+```bash
+# Reset database (removes all data)
+./setup.sh clean
+./setup.sh
+
+# Manual database access
+docker exec -it opencsat_postgres psql -U opencsat -d opencsat
+```
+
+## 📝 Development
+
+### Local Development
+```bash
+# Start development environment
+./setup.sh start
+
+# Watch application logs
+./setup.sh logs app
+
+# Access database directly
+./setup.sh logs postgres
+```
+
+### Making Changes
+```bash
+# After code changes, rebuild
+docker-compose build app
+./setup.sh restart
+```
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test with `./setup.sh`
+5. Submit a pull request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🆘 Support
+
+- **Documentation**: Check this README and `email-templates.txt`
+- **Issues**: Create a GitHub issue
+- **Discussions**: Use GitHub Discussions for questions
+
+---
+
+**Made with ❤️ for MSPs who care about customer satisfaction**

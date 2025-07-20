@@ -10,7 +10,7 @@ services:
     volumes:
       - ./data/postgres:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
@@ -27,27 +27,11 @@ services:
       postgres:
         condition: service_healthy
     ports:
-      - "8095:3000"
+      - "${TEABLE_PORT}:3000"
     env_file:
       - .env
     networks:
       - opencsat
-
-  setup:
-    build:
-      context: ./scripts
-    depends_on:
-      teable:
-        condition: service_started
-    env_file:
-      - .env
-    volumes:
-      - ./.env:/app/.env
-    environment:
-      - TEABLE_URL=http://teable:3000
-    networks:
-      - opencsat
-    restart: "no"
 
   app:
     build:
@@ -55,10 +39,9 @@ services:
     container_name: opencsat_app
     restart: unless-stopped
     depends_on:
-      setup:
-        condition: service_completed_successfully
+      - teable
     ports:
-      - "8094:3000"
+      - "${APP_PORT}:3000"
     env_file:
       - .env
     environment:

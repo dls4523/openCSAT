@@ -252,10 +252,7 @@ class TeableSetup {
             // Setup surveys table fields
             if (tableIds.surveys) {
                 console.log('   📝 Setting up surveys table...');
-                await this.createFieldIfNotExists(tableIds.surveys, 'title', {
-                    name: 'title',
-                    type: 'singleLineText'
-                });
+                // Skip creating 'title' field - use existing 'Name' field instead
                 
                 await this.createFieldIfNotExists(tableIds.surveys, 'description', {
                     name: 'description',
@@ -276,6 +273,8 @@ class TeableSetup {
             // Setup tickets table fields
             if (tableIds.tickets) {
                 console.log('   📝 Setting up tickets table...');
+                // Use 'Name' field as the ticket identifier
+                
                 await this.createFieldIfNotExists(tableIds.tickets, 'external_id', {
                     name: 'external_id',
                     type: 'singleLineText'
@@ -406,11 +405,8 @@ class TeableSetup {
             // Setup system_config table fields
             if (tableIds.system_config) {
                 console.log('   📝 Setting up system_config table...');
-                await this.createFieldIfNotExists(tableIds.system_config, 'key', {
-                    name: 'key',
-                    type: 'singleLineText'
-                });
-
+                // Use 'Name' field as the config key
+                
                 await this.createFieldIfNotExists(tableIds.system_config, 'value', {
                     name: 'value',
                     type: 'singleLineText'
@@ -425,11 +421,8 @@ class TeableSetup {
             // Setup email_templates table fields
             if (tableIds.email_templates) {
                 console.log('   📝 Setting up email_templates table...');
-                await this.createFieldIfNotExists(tableIds.email_templates, 'name', {
-                    name: 'name',
-                    type: 'singleLineText'
-                });
-
+                // Use 'Name' field as the template name
+                
                 await this.createFieldIfNotExists(tableIds.email_templates, 'subject', {
                     name: 'subject',
                     type: 'singleLineText'
@@ -488,6 +481,15 @@ class TeableSetup {
 
     async createFieldIfNotExists(tableId, fieldName, fieldConfig) {
         try {
+            // First, check if field already exists
+            const existingFields = await this.makeRequest(`/table/${tableId}/field`);
+            const fieldExists = existingFields.some(field => field.name === fieldName);
+            
+            if (fieldExists) {
+                console.log(`     ⏭️  Field '${fieldName}' already exists`);
+                return;
+            }
+            
             await this.makeRequest(`/table/${tableId}/field`, 'POST', fieldConfig);
             console.log(`     ✅ Created field '${fieldName}'`);
         } catch (error) {
@@ -504,6 +506,149 @@ class TeableSetup {
         await new Promise(resolve => setTimeout(resolve, 300));
     }
 
+    async cleanupEmptyRecords(tableId) {
+        try {
+            console.log('🧹 Cleaning up empty records...');
+            const records = await this.makeRequest(`/table/${tableId}/record`);
+            
+            console.log(`   📊 Found ${records.records?.length || 0} total records`);
+            
+            if (records.records && records.records.length > 0) {
+                let deletedCount = 0;
+                for (const record of records.records) {
+                    console.log(`   🔍 Checking record ${record.id}:`);
+                    console.log(`      - Fields: ${JSON.stringify(record.fields)}`);
+                    console.log(`      - Field keys: ${Object.keys(record.fields || {})}`);
+                    console.log(`      - Has title: ${!!(record.fields && record.fields.title)}`);
+                    
+                    // Check if record has no meaningful data (empty fields object or no title)
+                    if (!record.fields || Object.keys(record.fields).length === 0 || !record.fields.title) {
+                        console.log(`   🗑️  Deleting empty record: ${record.id}`);
+                        try {
+                            await this.makeRequest(`/table/${tableId}/record/${record.id}`, 'DELETE');
+                            deletedCount++;
+                            // Small delay between deletions
+                            await new Promise(resolve => setTimeout(resolve, 200));
+                        } catch (deleteError) {
+                            console.log(`   ⚠️  Could not delete record ${record.id}: ${deleteError.message}`);
+                        }
+                    } else {
+                        console.log(`   ✅ Keeping record ${record.id} (has data)`);
+                    }
+                }
+                console.log(`✅ Cleaned up ${deletedCount} empty records`);
+            } else {
+                console.log('✅ No records to clean up');
+            }
+            
+        } catch (error) {
+            console.log('⚠️  Error during cleanup:', error.message);
+        }
+    }
+
+    async cleanupUnusedDefaultFields() {
+        console.log('🧹 Cleaning up unused default fields...');
+        
+        // Define which fields we actually need for each table
+        const requiredFields = {
+            'surveys': ['Name', 'description', 'questions', 'is_active'], // Use Name instead of title
+            'tickets': ['Name', 'external_id', 'customer_email', 'customer_name', 'subject', 'status', 'closed_at'], // Use Name for ticket name/ID
+            'survey_responses': ['Name', 'token', 'status', 'responses', 'overall_rating', 'comments', 'ticket_external_id', 
+                               'customer_email', 'customer_name', 'ticket_subject', 'technician_name', 'company_name', 
+                               'completion_date', 'priority', 'category', 'submitted_at', 'expires_at', 'created_at'],
+            'system_config': ['Name', 'value', 'description'], // Use Name as the config key
+            'email_templates': ['Name', 'subject', 'body', 'is_active'], // Use Name as template name
+            'webhook_logs': ['Name', 'source', 'event_type', 'payload', 'processed', 'error_message', 'created_at']
+        };
+        
+        try {
+            const tables = await this.makeRequest(`/base/${this.config.baseId}/table`);
+            
+            for (const table of tables) {
+                if (!requiredFields[table.name]) {
+                    console.log(`   ⏭️  Skipping unknown table: ${table.name}`);
+                    continue;
+                }
+                
+                console.log(`   🔍 Cleaning fields in table: ${table.name}`);
+                const fields = await this.makeRequest(`/table/${table.id}/field`);
+                
+                // Find fields that aren't in our required list
+                const unusedFields = fields.filter(field => 
+                    !requiredFields[table.name].includes(field.name) &&
+                    field.name !== 'id' && // Keep the primary key field
+                    field.name !== 'Name' && // Skip primary field (can't be deleted)
+                    !field.isPrimary // Skip any field marked as primary
+                );
+                
+                for (const field of unusedFields) {
+                    console.log(`   🗑️  Deleting unused field: ${field.name} from ${table.name}`);
+                    try {
+                        await this.makeRequest(`/table/${table.id}/field/${field.id}`, 'DELETE');
+                        await new Promise(resolve => setTimeout(resolve, 300));
+                    } catch (deleteError) {
+                        console.log(`   ⚠️  Could not delete field ${field.name}: ${deleteError.message}`);
+                    }
+                }
+            }
+            
+            console.log('✅ Unused default fields cleanup complete');
+        } catch (error) {
+            console.log('⚠️  Error during default field cleanup:', error.message);
+        }
+    }
+
+    async cleanupDuplicateFields() {
+        console.log('🧹 Cleaning up duplicate fields...');
+        
+        try {
+            const tables = await this.makeRequest(`/base/${this.config.baseId}/table`);
+            
+            for (const table of tables) {
+                console.log(`   🔍 Checking fields in table: ${table.name}`);
+                const fields = await this.makeRequest(`/table/${table.id}/field`);
+                
+                // Find duplicate fields (ending with _2, _3, etc.)
+                const duplicateFields = fields.filter(field => 
+                    /_\d+$/.test(field.name) // Matches names ending with _number
+                );
+                
+                for (const field of duplicateFields) {
+                    console.log(`   🗑️  Deleting duplicate field: ${field.name}`);
+                    try {
+                        await this.makeRequest(`/table/${table.id}/field/${field.id}`, 'DELETE');
+                        await new Promise(resolve => setTimeout(resolve, 300));
+                    } catch (deleteError) {
+                        console.log(`   ⚠️  Could not delete field ${field.name}: ${deleteError.message}`);
+                    }
+                }
+            }
+            
+            console.log('✅ Duplicate fields cleanup complete');
+        } catch (error) {
+            console.log('⚠️  Error during field cleanup:', error.message);
+        }
+    }
+
+    async cleanupAllEmptyRecords() {
+        console.log('🧹 Cleaning up empty records from all tables...');
+        
+        try {
+            const tables = await this.makeRequest(`/base/${this.config.baseId}/table`);
+            
+            for (const table of tables) {
+                console.log(`   🔍 Checking table: ${table.name}`);
+                await this.cleanupEmptyRecords(table.id);
+                // Small delay between table cleanups
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+            
+            console.log('✅ All tables cleaned up');
+        } catch (error) {
+            console.log('⚠️  Error during full cleanup:', error.message);
+        }
+    }
+
     async addDefaultData() {
         console.log('📊 Adding default survey...');
         
@@ -516,15 +661,15 @@ class TeableSetup {
                 return;
             }
 
-            // Check if we already have surveys
+            // Check if we already have meaningful surveys (with actual data)
             const existingRecords = await this.makeRequest(`/table/${surveysTable.id}/record?maxRecords=1`);
-            if (existingRecords.records && existingRecords.records.length > 0) {
+            if (existingRecords.records && existingRecords.records.some(r => r.fields && r.fields.Name)) {
                 console.log('⏭️  Default survey already exists, skipping');
                 return;
             }
             
             const defaultSurvey = {
-                title: 'Customer Satisfaction Survey',
+                Name: 'Customer Satisfaction Survey', // Use Name field instead of title
                 description: 'Help us improve our service by rating your experience',
                 questions: JSON.stringify([
                     {
@@ -570,7 +715,7 @@ class TeableSetup {
             });
             console.log('✅ Default survey added');
         } catch (error) {
-            console.log('⚠️  Default survey may already exist or failed to create:', error.message);
+            console.log('⚠️  Default survey creation failed:', error.message);
         }
     }
 
@@ -650,6 +795,12 @@ class TeableSetup {
         }
 
         await this.setupBasicFields();
+        
+        // Clean up unused default fields, duplicates, and empty records
+        await this.cleanupUnusedDefaultFields();
+        await this.cleanupDuplicateFields();
+        await this.cleanupAllEmptyRecords();
+        
         await this.addDefaultData();
         await this.writeConfigToEnv();
 
