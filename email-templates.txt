@@ -1,0 +1,348 @@
+# Email Templates for PSA Integration
+
+## SyncroMSP Email Template
+
+### Template Configuration
+**Location:** Admin → Settings → Email Templates → Ticket Resolved
+**Template Type:** Ticket Resolved Customer Notification
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Ticket Resolved - {{business_name}}</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #007cba; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0; }
+        .content { background: #fff; padding: 30px; border: 1px solid #ddd; border-top: none; }
+        .ticket-info { background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0; }
+        .cta-button { display: inline-block; background: #28a745; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; margin: 20px 0; }
+        .footer { font-size: 12px; color: #666; margin-top: 30px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>✅ Your Support Request Has Been Resolved</h1>
+        </div>
+        
+        <div class="content">
+            <p>Hi {{customer_first_name}},</p>
+            
+            <p>Great news! Your support ticket has been successfully resolved by our technical team.</p>
+            
+            <div class="ticket-info">
+                <h3>Ticket Summary</h3>
+                <p><strong>Ticket #:</strong> {{number}}</p>
+                <p><strong>Issue:</strong> {{subject}}</p>
+                <p><strong>Resolved by:</strong> {{assigned_user}}</p>
+                <p><strong>Resolution Date:</strong> {{updated_at}}</p>
+                <p><strong>Total Time:</strong> {{total_billable_duration}}</p>
+            </div>
+            
+            <h3>📝 Share Your Experience</h3>
+            <p>Your feedback is important to us! Please take 30 seconds to rate your support experience:</p>
+            
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="https://your-opencsat-domain.com/api/survey/create-and-redirect?ticket_id={{id}}&customer_email={{customer_business_then_primary_email}}&customer_name={{customer_business_then_primary_name}}&ticket_subject={{subject}}&technician_name={{assigned_user}}&company_name={{business_name}}&completion_date={{updated_at}}&priority={{priority}}&category={{problem_type}}" 
+                   class="cta-button" 
+                   style="background: #007cba; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                   📊 Rate Your Experience
+                </a>
+            </div>
+            
+            <p>The survey takes less than 1 minute and helps us improve our service quality.</p>
+            
+            <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
+            
+            <h3>Need Additional Help?</h3>
+            <p>If you have any questions about this resolution or need further assistance, please don't hesitate to contact us:</p>
+            <ul>
+                <li>📧 Email: {{business_email}}</li>
+                <li>📞 Phone: {{business_phone}}</li>
+                <li>🌐 Portal: <a href="{{customer_portal_url}}">Customer Portal</a></li>
+            </ul>
+            
+            <div class="footer">
+                <p>Thank you for choosing {{business_name}}!</p>
+                <p><em>This is an automated message. Please do not reply directly to this email.</em></p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+```
+
+---
+
+## ConnectWise Manage Template
+
+### Template Configuration
+**Location:** System → Email Templates → Service Ticket Templates
+**Template Name:** Ticket Closed - Customer Survey
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Service Request Completed</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+        .container { max-width: 600px; margin: 0 auto; }
+        .header { background: #1f4e79; color: white; padding: 20px; text-align: center; }
+        .content { padding: 30px; background: white; }
+        .ticket-summary { background: #f1f3f4; padding: 20px; border-left: 4px solid #1f4e79; margin: 20px 0; }
+        .survey-cta { text-align: center; margin: 30px 0; }
+        .survey-button { display: inline-block; background: #34a853; color: white; padding: 15px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎉 Service Request Completed</h1>
+        </div>
+        
+        <div class="content">
+            <p>Dear $contact_name,</p>
+            
+            <p>Your service request has been successfully completed by our technical team.</p>
+            
+            <div class="ticket-summary">
+                <h3>Service Summary</h3>
+                <p><strong>Ticket Number:</strong> $ticket_number</p>
+                <p><strong>Summary:</strong> $summary</p>
+                <p><strong>Technician:</strong> $assigned_member</p>
+                <p><strong>Completed:</strong> $date_closed</p>
+                <p><strong>Priority:</strong> $priority</p>
+                <p><strong>Board:</strong> $board_name</p>
+            </div>
+            
+            <h3>We Value Your Feedback!</h3>
+            <p>Help us serve you better by sharing your experience with our support team:</p>
+            
+            <div class="survey-cta">
+                <a href="https://your-opencsat-domain.com/api/survey/create-and-redirect?ticket_id=$ticket_number&customer_email=$contact_email&customer_name=$contact_name&ticket_subject=$summary&technician_name=$assigned_member&company_name=$company_name&completion_date=$date_closed&priority=$priority&board=$board_name" 
+                   class="survey-button">
+                   📋 Complete Survey (30 seconds)
+                </a>
+            </div>
+            
+            <p><small>Your feedback is confidential and helps us improve our service quality.</small></p>
+            
+            <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+            
+            <h3>Need More Help?</h3>
+            <p>If you need additional assistance, please contact us:</p>
+            <ul>
+                <li>📧 <a href="mailto:$config_email_address">$config_email_address</a></li>
+                <li>📞 $config_phone_number</li>
+                <li>🌐 <a href="$portal_url">Customer Portal</a></li>
+            </ul>
+            
+            <p>Thank you for choosing $company_name!</p>
+            <p><em>Best regards,<br>$company_name Support Team</em></p>
+        </div>
+    </div>
+</body>
+</html>
+```
+
+---
+
+## Autotask PSA Template
+
+### Template Configuration
+**Location:** Admin → Features & Settings → Email Templates
+**Template Type:** Workflow Rule Email Template
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Ticket Resolved - Feedback Request</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 20px; background: #f5f5f5; }
+        .email-container { max-width: 600px; margin: 0 auto; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .header { background: #ff6900; color: white; padding: 25px; text-align: center; }
+        .content { padding: 30px; }
+        .ticket-details { background: #fafafa; border: 1px solid #e0e0e0; border-radius: 6px; padding: 20px; margin: 20px 0; }
+        .feedback-section { text-align: center; margin: 30px 0; padding: 25px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px; color: white; }
+        .feedback-button { display: inline-block; background: white; color: #667eea; padding: 12px 25px; text-decoration: none; border-radius: 25px; font-weight: bold; margin-top: 15px; }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <h1>✅ Ticket Resolved Successfully</h1>
+        </div>
+        
+        <div class="content">
+            <p>Hello [CONTACTFIRSTNAME],</p>
+            
+            <p>We're pleased to inform you that your support ticket has been resolved.</p>
+            
+            <div class="ticket-details">
+                <h3>Resolution Details</h3>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr><td style="padding: 5px; font-weight: bold;">Ticket #:</td><td style="padding: 5px;">[TICKETNUMBER]</td></tr>
+                    <tr><td style="padding: 5px; font-weight: bold;">Issue:</td><td style="padding: 5px;">[TICKETTITLE]</td></tr>
+                    <tr><td style="padding: 5px; font-weight: bold;">Technician:</td><td style="padding: 5px;">[ASSIGNEDRESOURCENAME]</td></tr>
+                    <tr><td style="padding: 5px; font-weight: bold;">Completed:</td><td style="padding: 5px;">[COMPLETEDDATE]</td></tr>
+                    <tr><td style="padding: 5px; font-weight: bold;">Priority:</td><td style="padding: 5px;">[PRIORITY]</td></tr>
+                </table>
+            </div>
+            
+            <div class="feedback-section">
+                <h3 style="margin-top: 0; color: white;">🌟 Rate Your Experience</h3>
+                <p style="margin: 10px 0; color: white;">Your opinion matters! Help us improve by rating your support experience.</p>
+                
+                <a href="https://your-opencsat-domain.com/api/survey/create-and-redirect?ticket_id=[TICKETNUMBER]&customer_email=[CONTACTEMAIL]&customer_name=[CONTACTFIRSTNAME] [CONTACTLASTNAME]&ticket_subject=[TICKETTITLE]&technician_name=[ASSIGNEDRESOURCENAME]&company_name=[ACCOUNTNAME]&completion_date=[COMPLETEDDATE]&priority=[PRIORITY]&queue=[QUEUENAME]" 
+                   class="feedback-button">
+                   📊 Complete 30-Second Survey
+                </a>
+            </div>
+            
+            <h3>Questions or Concerns?</h3>
+            <p>If you need any clarification about the resolution or have additional questions:</p>
+            
+            <ul>
+                <li>📧 Reply to this email</li>
+                <li>📞 Call us at [COMPANYPHONE]</li>
+                <li>🌐 Visit our <a href="[CLIENTPORTALURL]">Client Portal</a></li>
+            </ul>
+            
+            <p>Thank you for choosing [COMPANYNAME] for your IT support needs.</p>
+            
+            <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
+            <p style="font-size: 12px; color: #888;">
+                <em>This email was sent automatically when your ticket was marked as resolved. 
+                For immediate assistance, please contact our support team directly.</em>
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+```
+
+---
+
+## Kaseya VSA Template
+
+### Template Configuration
+**Location:** Service Desk → Configuration → Email Templates
+**Event:** Ticket Closed
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Service Ticket Closed</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background-color: #f4f4f4; }
+        .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 10px; overflow: hidden; }
+        .header { background: #2c5aa0; color: white; padding: 20px; text-align: center; }
+        .content { padding: 30px; }
+        .ticket-info { background: #e8f4fd; border-left: 4px solid #2c5aa0; padding: 15px; margin: 20px 0; }
+        .survey-box { background: #f8f9fa; border: 2px dashed #2c5aa0; border-radius: 8px; padding: 25px; text-align: center; margin: 25px 0; }
+        .survey-btn { background: #28a745; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎯 Service Request Completed</h1>
+        </div>
+        
+        <div class="content">
+            <p>Dear <strong>$enduser_fname $enduser_lname</strong>,</p>
+            
+            <p>Your service request has been successfully completed by our support team.</p>
+            
+            <div class="ticket-info">
+                <h3>Service Details</h3>
+                <p><strong>Ticket ID:</strong> $sd_ticket_id</p>
+                <p><strong>Subject:</strong> $sd_ticket_title</p>
+                <p><strong>Technician:</strong> $sd_ticket_assignee</p>
+                <p><strong>Closed Date:</strong> $sd_ticket_close_date</p>
+                <p><strong>Category:</strong> $sd_ticket_category</p>
+                <p><strong>Priority:</strong> $sd_ticket_priority</p>
+            </div>
+            
+            <div class="survey-box">
+                <h3 style="color: #2c5aa0; margin-top: 0;">📋 Quick Feedback Request</h3>
+                <p>Help us maintain excellent service quality by sharing your experience!</p>
+                
+                <a href="https://your-opencsat-domain.com/api/survey/create-and-redirect?ticket_id=$sd_ticket_id&customer_email=$enduser_email&customer_name=$enduser_fname $enduser_lname&ticket_subject=$sd_ticket_title&technician_name=$sd_ticket_assignee&company_name=$org_name&completion_date=$sd_ticket_close_date&category=$sd_ticket_category&priority=$sd_ticket_priority" 
+                   class="survey-btn">
+                   ⭐ Rate Service (1 minute)
+                </a>
+                
+                <p style="font-size: 12px; color: #666; margin-top: 15px;">
+                    Your feedback is anonymous and helps us improve
+                </p>
+            </div>
+            
+            <h3>Need Additional Support?</h3>
+            <p>If you have any questions about this resolution or need further assistance:</p>
+            
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 5px;">
+                <p style="margin: 5px 0;">📧 <strong>Email:</strong> <a href="mailto:$org_email">$org_email</a></p>
+                <p style="margin: 5px 0;">📞 <strong>Phone:</strong> $org_phone</p>
+                <p style="margin: 5px 0;">🌐 <strong>Portal:</strong> <a href="$portal_url">Service Portal</a></p>
+            </div>
+            
+            <p>Thank you for choosing <strong>$org_name</strong>!</p>
+            
+            <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+            <p style="font-size: 11px; color: #777;">
+                This notification was automatically generated when your ticket was closed. 
+                Please do not reply directly to this email.
+            </p>
+        </div>
+    </div>
+</body>
+</html>
+```
+
+---
+
+## Implementation Notes
+
+### Survey URL Parameters
+All templates use the same URL structure:
+```
+https://your-opencsat-domain.com/api/survey/create-and-redirect?
+  ticket_id=VALUE&
+  customer_email=VALUE&
+  customer_name=VALUE&
+  ticket_subject=VALUE&
+  technician_name=VALUE&
+  company_name=VALUE&
+  completion_date=VALUE&
+  [additional_custom_fields...]
+```
+
+### Setup Instructions for MSPs
+
+1. **Replace Domain**: Change `your-opencsat-domain.com` to your actual OpenCSAT domain
+2. **Test Templates**: Use test tickets to verify merge fields work correctly
+3. **Customize Branding**: Update colors, logos, and company information
+4. **Configure Triggers**: Set up workflow rules to send emails when tickets are closed/resolved
+5. **Monitor Results**: Check OpenCSAT dashboard for survey responses
+
+### Benefits of This Approach
+
+- **Universal Compatibility**: Works with any PSA that supports email templates
+- **No Complex Integrations**: Just modify existing email templates
+- **Rich Ticket Context**: Surveys show full ticket details for better feedback
+- **Immediate Deployment**: Start collecting feedback without API setup
+- **Scalable**: Add new PSA systems easily with template modifications

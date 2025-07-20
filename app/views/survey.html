@@ -4,36 +4,245 @@
     <title>{{title}}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
-        body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
-        .question { margin: 30px 0; }
-        label { display: block; margin-bottom: 10px; font-weight: bold; }
-        .rating-group { display: flex; gap: 10px; margin: 10px 0; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+            max-width: 700px; 
+            margin: 0 auto; 
+            padding: 20px; 
+            background: #f8f9fa;
+            color: #333;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #007cba 0%, #005a8b 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+            font-size: 16px;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .ticket-context {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .ticket-context h3 {
+            margin: 0 0 15px 0;
+            color: #007cba;
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        .ticket-details {
+            display: grid;
+            gap: 8px;
+        }
+        
+        .ticket-details p {
+            margin: 0;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        
+        .ticket-details strong {
+            color: #495057;
+            font-weight: 600;
+            min-width: 120px;
+            display: inline-block;
+        }
+        
+        .question { 
+            margin: 30px 0; 
+        }
+        
+        .question:first-child {
+            margin-top: 0;
+        }
+        
+        label { 
+            display: block; 
+            margin-bottom: 15px; 
+            font-weight: 600;
+            font-size: 16px;
+            color: #333;
+        }
+        
+        .rating-group { 
+            display: flex; 
+            gap: 8px; 
+            margin: 15px 0;
+            flex-wrap: wrap;
+        }
+        
         .rating-btn { 
-            width: 50px; height: 50px; border: 2px solid #ddd; background: white; 
-            border-radius: 50%; cursor: pointer; font-size: 18px; font-weight: bold;
+            width: 50px; 
+            height: 50px; 
+            border: 2px solid #dee2e6; 
+            background: white; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-size: 18px; 
+            font-weight: 600;
+            color: #6c757d;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
-        .rating-btn:hover { border-color: #007cba; }
-        .rating-btn.selected { background: #007cba; color: white; border-color: #007cba; }
-        textarea { width: 100%; height: 100px; padding: 10px; border: 1px solid #ddd; border-radius: 4px; }
+        
+        .rating-btn:hover { 
+            border-color: #007cba; 
+            color: #007cba;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,124,186,0.2);
+        }
+        
+        .rating-btn.selected { 
+            background: #007cba; 
+            color: white; 
+            border-color: #007cba;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,124,186,0.3);
+        }
+        
+        .rating-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+            font-size: 12px;
+            color: #6c757d;
+        }
+        
+        textarea { 
+            width: 100%; 
+            min-height: 100px; 
+            padding: 15px; 
+            border: 2px solid #dee2e6; 
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 14px;
+            resize: vertical;
+            transition: border-color 0.2s ease;
+        }
+        
+        textarea:focus {
+            outline: none;
+            border-color: #007cba;
+            box-shadow: 0 0 0 3px rgba(0,124,186,0.1);
+        }
+        
+        .submit-section {
+            margin-top: 40px;
+            padding-top: 30px;
+            border-top: 1px solid #e9ecef;
+            text-align: center;
+        }
+        
         .submit-btn { 
-            background: #007cba; color: white; padding: 15px 30px; 
-            border: none; border-radius: 4px; cursor: pointer; font-size: 16px; 
+            background: linear-gradient(135deg, #007cba 0%, #005a8b 100%);
+            color: white; 
+            padding: 15px 40px; 
+            border: none; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            min-width: 200px;
         }
-        .submit-btn:hover { background: #005a8b; }
-        .submit-btn:disabled { background: #ccc; cursor: not-allowed; }
+        
+        .submit-btn:hover { 
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,124,186,0.3);
+        }
+        
+        .submit-btn:disabled { 
+            background: #6c757d; 
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .privacy-note {
+            margin-top: 20px;
+            font-size: 12px;
+            color: #6c757d;
+            text-align: center;
+        }
+        
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+            
+            .header, .content {
+                padding: 20px;
+            }
+            
+            .ticket-details {
+                font-size: 13px;
+            }
+            
+            .rating-btn {
+                width: 45px;
+                height: 45px;
+                font-size: 16px;
+            }
+            
+            .submit-btn {
+                width: 100%;
+                padding: 18px;
+            }
+        }
     </style>
 </head>
 <body>
-    <h1>{{title}}</h1>
-    <p>{{description}}</p>
-    
-    <form id="surveyForm">
-        {{questions}}
-        
-        <div style="margin-top: 40px;">
-            <button type="submit" class="submit-btn">Submit Survey</button>
+    <div class="container">
+        <div class="header">
+            <h1>{{title}}</h1>
+            <p>{{description}}</p>
         </div>
-    </form>
+        
+        <div class="content">
+            {{ticket_context}}
+            
+            <form id="surveyForm">
+                {{questions}}
+                
+                <div class="submit-section">
+                    <button type="submit" class="submit-btn">Submit Feedback</button>
+                    <div class="privacy-note">
+                        Your feedback helps us improve our service quality
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <script>
         // Handle rating buttons
@@ -52,7 +261,23 @@
                 
                 // Set hidden input value
                 document.querySelector(`input[name="${question}"]`).value = value;
+                
+                // Add haptic feedback on mobile
+                if (navigator.vibrate) {
+                    navigator.vibrate(50);
+                }
             });
+        });
+
+        // Add rating labels dynamically
+        document.querySelectorAll('.rating-group').forEach(group => {
+            const buttons = group.querySelectorAll('.rating-btn');
+            if (buttons.length === 5) {
+                const labels = document.createElement('div');
+                labels.className = 'rating-labels';
+                labels.innerHTML = '<span>Very Poor</span><span>Excellent</span>';
+                group.appendChild(labels);
+            }
         });
 
         // Handle form submission
@@ -60,6 +285,8 @@
             e.preventDefault();
             
             const submitBtn = this.querySelector('.submit-btn');
+            const originalText = submitBtn.textContent;
+            
             submitBtn.disabled = true;
             submitBtn.textContent = 'Submitting...';
             
@@ -73,23 +300,51 @@
                     body: JSON.stringify(data)
                 });
                 
-                if (response.ok) {
-                    document.body.innerHTML = `
-                        <div style="text-align: center; padding: 50px;">
-                            <h1>Thank You!</h1>
-                            <p>Your feedback has been submitted successfully.</p>
-                        </div>
-                    `;
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    // Success animation
+                    submitBtn.style.background = '#28a745';
+                    submitBtn.textContent = '✓ Submitted!';
+                    
+                    // Show success message
+                    setTimeout(() => {
+                        document.querySelector('.container').innerHTML = `
+                            <div class="header">
+                                <h1>Thank You!</h1>
+                                <p>Your feedback has been submitted successfully</p>
+                            </div>
+                            <div class="content" style="text-align: center; padding: 40px;">
+                                <div style="font-size: 48px; color: #28a745; margin-bottom: 20px;">✓</div>
+                                <h2 style="color: #28a745; margin: 0 0 15px 0;">Feedback Received</h2>
+                                <p style="color: #6c757d; margin: 0;">Thank you for taking the time to share your experience with us. Your feedback helps us improve our service quality.</p>
+                            </div>
+                        `;
+                    }, 1000);
                 } else {
-                    alert('Failed to submit survey. Please try again.');
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = 'Submit Survey';
+                    throw new Error(result.error || 'Submission failed');
                 }
             } catch (error) {
-                alert('Error submitting survey. Please try again.');
+                console.error('Submit error:', error);
+                alert('Failed to submit survey. Please try again.');
                 submitBtn.disabled = false;
-                submitBtn.textContent = 'Submit Survey';
+                submitBtn.textContent = originalText;
             }
+        });
+
+        // Form validation
+        document.getElementById('surveyForm').addEventListener('change', function() {
+            const requiredFields = this.querySelectorAll('input[required], textarea[required]');
+            const submitBtn = this.querySelector('.submit-btn');
+            
+            let allFilled = true;
+            requiredFields.forEach(field => {
+                if (!field.value.trim()) {
+                    allFilled = false;
+                }
+            });
+            
+            submitBtn.style.opacity = allFilled ? '1' : '0.7';
         });
     </script>
 </body>
